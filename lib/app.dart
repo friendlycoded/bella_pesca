@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/cupertino.dart';
@@ -25,6 +28,11 @@ class App extends StatefulWidget {
 class _AppState extends State<App> {
   int _counter = 0;
   Position _position;
+  Completer<GoogleMapController> _controller = Completer();
+  static final CameraPosition _kGooglePlex = CameraPosition(
+    target: LatLng(37.42796133580664, -122.085749655962),
+    zoom: 14.4746,
+  );
   void _incrementCounter() {
     setState(() {
       // This call to setState tells the Flutter framework that something has
@@ -48,6 +56,13 @@ class _AppState extends State<App> {
         body: Stack(children: <Widget>[
           // Center is a layout widget. It takes a single child and positions it
           // in the middle of the parent.
+          GoogleMap(
+            mapType: MapType.hybrid,
+            initialCameraPosition: _kGooglePlex,
+            onMapCreated: (GoogleMapController controller) {
+              _controller.complete(controller);
+            },
+          ),
           Column(
               mainAxisSize: MainAxisSize.max,
               mainAxisAlignment: MainAxisAlignment.end,
@@ -101,35 +116,37 @@ class _AppState extends State<App> {
   }
 
   void createPosition(String parsedPosition) {
-    double longitude =
-        double.parse(parsedPosition.split(',')[0].replaceAll('long:', ''));
-    double latitude =
-        double.parse(parsedPosition.split(',')[1].replaceAll('lat:', ''));
-    DateTime timestamp = DateTime.parse(
-        parsedPosition.split(',')[2].replaceAll('timestamp:', ''));
-    bool mocked = bool.fromEnvironment(
-        parsedPosition.split(',')[3].replaceAll('mocked:', ''));
-    double accuracy =
-        double.parse(parsedPosition.split(',')[4].replaceAll('accuracy:', ''));
-    double altitude =
-        double.parse(parsedPosition.split(',')[5].replaceAll('altitude:', ''));
-    double heading =
-        double.parse(parsedPosition.split(',')[6].replaceAll('heading:', ''));
-    double speed =
-        double.parse(parsedPosition.split(',')[7].replaceAll('speed:', ''));
-    double speedAccuracy = double.parse(
-        parsedPosition.split(',')[8].replaceAll('speedAccuracy:', ''));
-    Position position = new Position(
-        longitude: longitude,
-        latitude: latitude,
-        timestamp: timestamp,
-        mocked: mocked,
-        accuracy: accuracy,
-        altitude: altitude,
-        heading: heading,
-        speed: speed,
-        speedAccuracy: speedAccuracy);
-    print(position.toString());
+    if (parsedPosition != null) {
+      double longitude =
+          double.parse(parsedPosition.split(',')[0].replaceAll('long:', ''));
+      double latitude =
+          double.parse(parsedPosition.split(',')[1].replaceAll('lat:', ''));
+      DateTime timestamp = DateTime.parse(
+          parsedPosition.split(',')[2].replaceAll('timestamp:', ''));
+      bool mocked = bool.fromEnvironment(
+          parsedPosition.split(',')[3].replaceAll('mocked:', ''));
+      double accuracy = double.parse(
+          parsedPosition.split(',')[4].replaceAll('accuracy:', ''));
+      double altitude = double.parse(
+          parsedPosition.split(',')[5].replaceAll('altitude:', ''));
+      double heading =
+          double.parse(parsedPosition.split(',')[6].replaceAll('heading:', ''));
+      double speed =
+          double.parse(parsedPosition.split(',')[7].replaceAll('speed:', ''));
+      double speedAccuracy = double.parse(
+          parsedPosition.split(',')[8].replaceAll('speedAccuracy:', ''));
+      Position position = new Position(
+          longitude: longitude,
+          latitude: latitude,
+          timestamp: timestamp,
+          mocked: mocked,
+          accuracy: accuracy,
+          altitude: altitude,
+          heading: heading,
+          speed: speed,
+          speedAccuracy: speedAccuracy);
+      print(position.toString());
+    }
   }
 
   Future<Position> setPosition() async {
@@ -158,6 +175,23 @@ class _AppState extends State<App> {
     return _position;
   }
 
+  Future<void> _goToTheNewPosition() async {
+    if (_position != null) {
+      final GoogleMapController controller = await _controller.future;
+      double latitude = _position.latitude;
+      double longitude = _position.longitude;
+      print("latitude:" +
+          latitude.toString() +
+          " longitude:" +
+          longitude.toString());
+      controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
+          bearing: 192.8334901395799,
+          target: new LatLng(latitude, longitude),
+          tilt: 59.440717697143555,
+          zoom: 19.151926040649414)));
+    }
+  }
+
   Future<String> getPosition() async {
     String text;
     try {
@@ -167,6 +201,7 @@ class _AppState extends State<App> {
     } catch (e) {
       print("Couldn't read file");
     }
+    _goToTheNewPosition();
     print(text);
     return text;
   }
